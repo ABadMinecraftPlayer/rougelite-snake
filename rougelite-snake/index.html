@@ -336,7 +336,7 @@
     <!-- Main Menu UI -->
     <div id="main-menu" class="ui-panel">
         <h1 class="text-3xl text-green-400 mb-4">Roguelite Snake</h1>
-        <p class="text-lg mb-2">Total Applecoins: <span id="menu-coins" class="text-yellow-300">0</span></p>
+        <p class="text-lg mb-2">Total Apple Coins: <span id="menu-coins" class="text-yellow-300">0</span></p>
         <p class="text-base mb-2">Speed: <span id="menu-speed" class="text-yellow-300">200 ms</span></p>
         <p class="text-base mb-6">Highest Round: <span id="menu-high-round" class="text-yellow-300">0</span></p>
         <button id="start-game-btn" class="btn w-full">Start Game</button>
@@ -349,8 +349,8 @@
         <p class="text-lg mb-2">Final Score: <span id="final-score" class="text-white">0</span></p>
         <p class="text-lg mb-2">Rounds Reached: <span id="final-round" class="text-white">0</span></p>
         <!-- NEW: Coins earned this run -->
-        <p class="text-lg mb-2">Coins Earned This Run: <span id="coins-earned-run" class="text-yellow-300">0</span></p>
-        <p class="text-lg mb-6">Total Coins: <span id="final-total-coins" class="text-yellow-300">0</span></p>
+        <p class="text-lg mb-2">A. Coins Earned: <span id="coins-earned-run" class="text-yellow-300">0</span></p>
+        <p class="text-lg mb-6">Total Apple Coins: <span id="final-total-coins" class="text-yellow-300">0</span></p>
         <button id="restart-btn" class="btn w-full">Main Menu</button>
     </div>
 
@@ -577,17 +577,6 @@
                     }
                 },
                 {
-                    id: "HASTY",
-                    title: "Hasty",
-                    buff: "+10ms Speed Stat.",
-                    debuff: null,
-                    applyEffect: () => {
-                        // Increase speed stat by 10 (maximum 250)
-                        speedStat = Math.min(250, speedStat + 10);
-                        updateHud();
-                    }
-                },
-                {
                     id: "GHOST",
                     title: "Ghost Form",
                     buff: "Pass through your own tail for 10 seconds.",
@@ -599,7 +588,7 @@
                 {
                     id: "COIN_BONUS",
                     title: "Investment",
-                    buff: "Instantly gain 10 Applecoins.",
+                    buff: "Instantly gain 10 Apple Coins.",
                     debuff: null,
                     applyEffect: () => {
                         persistentState.appleCoins += 10;
@@ -841,11 +830,6 @@
                 // 5. Apply speed effects (persistent across levels). Base comes from speedStat.
                 let currentSpeed = speedStat; // canonical permanent stat (ms)
 
-                // Temporary hasty buff overrides to a fast fixed value if present
-                if (activeBuffs.hasty) {
-                    currentSpeed = 120;
-                }
-
                 // Check for slowed/fast modifiers - they multiply the base
                 if (activeBuffs.slowed) {
                     currentSpeed = currentSpeed * 1.2; // 20% slower
@@ -1001,10 +985,6 @@
 
                 // Calculate earned coins for this run
                 let earned = Math.floor(score / 2);
-                // Hasty bonus logic
-                if (activeBuffs.hasty) {
-                    earned += Math.floor(score / 2);
-                }
 
                 // Add to persistent total
                 persistentState.appleCoins += earned;
@@ -1098,7 +1078,7 @@
                     // If at minimum speed, don't offer further slowers
                     if (speedStat <= 150 && c.id === 'TURBO_STARTER') return false;
                     // If at maximum speed, don't offer further speeders
-                    if (speedStat >= 250 && (c.id === 'CAREFUL_CRAWLER' || c.id === 'HASTY')) return false;
+                    if (speedStat >= 250 && (c.id === 'CAREFUL_CRAWLER')) return false;
                     return true;
                 });
                 availableCards = [...availableCards];
