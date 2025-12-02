@@ -321,8 +321,7 @@
             <div id="speed-display">SPEED: 200ms</div>
             <div id="quota-display">QUOTA: 5</div>
             <div id="round-display">ROUND: 1</div>
-            <!-- Coins are controlled via JS based on state -->
-            <div id="coins-display">COINS: 0</div>
+            <!-- coins removed from HUD per request -->
         </div>
 
         <!-- Hearts Container (hidden by default) -->
@@ -337,10 +336,12 @@
     <div id="main-menu" class="ui-panel">
         <h1 class="text-3xl text-green-400 mb-4">Roguelite Snake</h1>
         <p class="text-lg mb-2">Total Apple Coins: <span id="menu-coins" class="text-yellow-300">0</span></p>
-        <p class="text-base mb-2">Speed: <span id="menu-speed" class="text-yellow-300">200 ms</span></p>
-        <p class="text-base mb-6">Highest Round: <span id="menu-high-round" class="text-yellow-300">0</span></p>
+        <!-- Speed removed from main menu as requested -->
+        <p class="text-base mb-2">Highest Round: <span id="menu-high-round" class="text-yellow-300">0</span></p>
+        <p class="text-base mb-6">Highest Score: <span id="menu-high-score" class="text-yellow-300">0</span></p>
         <button id="start-game-btn" class="btn w-full">Start Game</button>
         <button id="upgrades-btn" class="btn w-full">Upgrades</button>
+        <button id="achievements-btn" class="btn w-full">Achievements</button>
     </div>
 
     <!-- Game Over UI -->
@@ -348,7 +349,7 @@
         <h1 class="text-3xl text-red-500 mb-4">GAME OVER</h1>
         <p class="text-lg mb-2">Final Score: <span id="final-score" class="text-white">0</span></p>
         <p class="text-lg mb-2">Rounds Reached: <span id="final-round" class="text-white">0</span></p>
-        <!-- NEW: Coins earned this run -->
+        <!-- Coins earned this run - kept in game over for clarity, but HUD coins removed -->
         <p class="text-lg mb-2">A. Coins Earned: <span id="coins-earned-run" class="text-yellow-300">0</span></p>
         <p class="text-lg mb-6">Total Apple Coins: <span id="final-total-coins" class="text-yellow-300">0</span></p>
         <button id="restart-btn" class="btn w-full">Main Menu</button>
@@ -373,7 +374,7 @@
             <div class="upgrade-info">
                 <p class="text-green-400">Apple Abundance</p>
                 <p>Increases apple spawn rate.</p>
-                <p>Current: <span id="apple-rate-value">2.00%</span></p>
+                <p>Current: <span id="apple-rate-value">1</span></p>
                 <p class="cost">Cost: <span id="apple-rate-cost">10</span> Coins</p>
             </div>
             <div>
@@ -413,6 +414,15 @@
         <button id="back-to-menu-btn" class="btn btn-secondary w-full mt-8">Back to Menu</button>
     </div>
 
+    <!-- Achievements UI -->
+    <div id="achievements-menu" class="ui-panel hidden">
+        <h1 class="text-2xl text-yellow-300 mb-4">ACHIEVEMENTS</h1>
+        <div id="achievements-list" class="text-left mb-6">
+            <!-- Achievements will be populated here -->
+        </div>
+        <button id="close-achievements-btn" class="btn btn-secondary w-full mt-4">Back</button>
+    </div>
+
     <!-- Touch Controls for Mobile -->
     <div id="touch-controls" class="hidden">
         <button id="touch-up" class="touch-btn">▲</button>
@@ -437,6 +447,7 @@
             const mainMenu = document.getElementById('main-menu');
             const gameOverMenu = document.getElementById('game-over-menu');
             const upgradesMenu = document.getElementById('upgrades-menu');
+            const achievementsMenu = document.getElementById('achievements-menu');
             const gameHud = document.getElementById('game-hud');
             const touchControls = document.getElementById('touch-controls');
             const heartsContainer = document.getElementById('hearts-container');
@@ -448,6 +459,8 @@
             const backToMenuBtn = document.getElementById('back-to-menu-btn');
             const buyAppleRateBtn = document.getElementById('buy-apple-rate');
             const buyStartLengthBtn = document.getElementById('buy-start-length');
+            const achievementsBtn = document.getElementById('achievements-btn');
+            const closeAchievementsBtn = document.getElementById('close-achievements-btn');
 
             // UI Toggles
             const toggleAppleRate = document.getElementById('toggle-apple-rate');
@@ -457,14 +470,12 @@
             const menuCoins = document.getElementById('menu-coins');
             const upgradeCoins = document.getElementById('upgrade-coins');
             const finalScore = document.getElementById('final-score');
-            // removed unused coinsEarned var; use coinsEarnedRun below
             const scoreDisplay = document.getElementById('score-display');
             const speedDisplay = document.getElementById('speed-display');
-            const menuSpeed = document.getElementById('menu-speed');
-            const coinsDisplay = document.getElementById('coins-display');
+            const menuHighRound = document.getElementById('menu-high-round');
+            const menuHighScore = document.getElementById('menu-high-score');
             const roundDisplay = document.getElementById('round-display');
             const quotaDisplay = document.getElementById('quota-display');
-            const menuHighRound = document.getElementById('menu-high-round');
             const finalRound = document.getElementById('final-round');
 
             // NEW: game over coin readouts
@@ -480,9 +491,10 @@
             const appleRateCost = document.getElementById('apple-rate-cost');
             const startLengthValue = document.getElementById('start-length-value');
             const startLengthCost = document.getElementById('start-length-cost');
+            const achievementsListEl = document.getElementById('achievements-list');
 
             // --- Game State ---
-            let gameState = 'MENU'; // MENU, GAME, UPGRADES, GAME_OVER, CARD_CHOICE
+            let gameState = 'MENU'; // MENU, GAME, UPGRADES, GAME_OVER, CARD_CHOICE, ACHIEVEMENTS
             let snake, apples, obstacles, direction, newDirection, score, gameLoopInterval;
             let lives, roundCounter, scoreQuota, currentGridSize;
             let activeBuffs = {};
@@ -499,6 +511,7 @@
             let persistentState = {
                 appleCoins: 0,
                 highestRound: 0,
+                highestScore: 0,
                 upgrades: {
                     appleSpawnRateLevel: 0,
                     startLengthLevel: 0
@@ -506,13 +519,20 @@
                 activeUpgrades: {
                     appleSpawnRate: true,
                     startLength: true
+                },
+                achievements: {
+                    fastestSpeed: false,
+                    slowestSpeed: false,
+                    halfFull: false,
+                    fullWithUpgrades: false,
+                    fullWithoutUpgrades: false
                 }
             };
 
             const BASE_APPLE_SPAWN_RATE = 0.02;
             const APPLE_RATE_INCREASE = 0.0025;
             // New: fixed apple count per level system
-            const BASE_APPLE_COUNT = 2; // start with 2 apples
+            const BASE_APPLE_COUNT = 1; // start with 1 apple (changed per request)
             const APPLES_PER_UPGRADE = 1; // each upgrade adds 1 apple
             // Maximum apples a player can have via upgrades
             const MAX_APPLE_COUNT = 50;
@@ -537,24 +557,7 @@
                         spawnSingleApple();
                     }
                 },
-                {
-                    id: "TURBO_STARTER",
-                    title: "Turbo Starter",
-                    buff: "+5 Score and +5 Length.",
-                    debuff: "-10ms Speed.",
-                    applyEffect: () => {
-                        score += 5;
-                        // Instant length increase (add 5 segments to the tail end)
-                        const tail = snake[snake.length - 1];
-                        for (let i = 0; i < 5; i++) {
-                            snake.push({ x: tail.x, y: tail.y });
-                        }
-
-                        // Apply speed debuff - reduce speed stat by 10 (minimum 150)
-                        speedStat = Math.max(150, speedStat - 10);
-                        updateHud();
-                    }
-                },
+                // TURBO_STARTER (hasty ability) removed per request
                 {
                     id: "CAREFUL_CRAWLER",
                     title: "Careful Crawler",
@@ -678,6 +681,8 @@
                 upgradesBtn.addEventListener('click', showUpgradesMenu);
                 restartBtn.addEventListener('click', showMainMenu);
                 backToMenuBtn.addEventListener('click', showMainMenu);
+                achievementsBtn.addEventListener('click', showAchievementsMenu);
+                closeAchievementsBtn.addEventListener('click', showMainMenu);
 
                 // Buy Listeners
                 buyAppleRateBtn.addEventListener('click', () => buyUpgrade('appleSpawnRateLevel'));
@@ -711,45 +716,47 @@
                 gameHud.classList.add('hidden'); // Hide HUD globally first
                 heartsContainer.classList.add('hidden');
                 touchControls.classList.add('hidden');
+                achievementsMenu.classList.add('hidden');
 
                 // Show the current panel
                 if (gameState === 'MENU') {
                     mainMenu.classList.remove('hidden');
-                    // Coins display remains hidden here as requested
                 } else if (gameState === 'GAME') {
                     // Show in-game elements
                     gameHud.classList.remove('hidden');
                     heartsContainer.classList.remove('hidden');
                     touchControls.classList.remove('hidden');
-
-                    // Hide the coin display during active gameplay
-                    coinsDisplay.style.display = 'none';
                 } else if (gameState === 'GAME_OVER') {
                     gameOverMenu.classList.remove('hidden');
-                    coinsDisplay.style.display = 'block'; // Show coins in game over (if needed)
                 } else if (gameState === 'UPGRADES') {
                     upgradesMenu.classList.remove('hidden');
                     updateUpgradesUI();
-                    coinsDisplay.style.display = 'block';
                 } else if (gameState === 'CARD_CHOICE') {
                     cardChoiceMenu.classList.remove('hidden');
                     displayCardChoices();
-                    coinsDisplay.style.display = 'block';
+                } else if (gameState === 'ACHIEVEMENTS') {
+                    achievementsMenu.classList.remove('hidden');
+                    displayAchievements();
                 }
             }
 
             function showMainMenu() {
                 gameState = 'MENU';
-                // Update menu display with current coins and highest round
+                // Update menu display with current coins and highest round/score
                 menuCoins.textContent = persistentState.appleCoins;
                 menuHighRound.textContent = persistentState.highestRound;
-                if (menuSpeed) menuSpeed.textContent = `${speedStat} ms`;
+                menuHighScore.textContent = persistentState.highestScore;
                 updateUIState();
                 drawMenuBackground();
             }
 
             function showUpgradesMenu() {
                 gameState = 'UPGRADES';
+                updateUIState();
+            }
+
+            function showAchievementsMenu() {
+                gameState = 'ACHIEVEMENTS';
                 updateUIState();
             }
 
@@ -906,6 +913,9 @@
                     spawnSingleApple(); // Spawn a new one
                     updateHud();
 
+                    // Check achievements (length increased)
+                    checkAchievements();
+
                     // Check for max size bonus
                     const maxTiles = (currentGridSize * currentGridSize) - obstacles.length;
                     if (snake.length >= maxTiles) {
@@ -959,11 +969,10 @@
 
             function updateHud() {
                 scoreDisplay.textContent = `SCORE: ${score}`;
-                coinsDisplay.textContent = `COINS: ${persistentState.appleCoins}`;
                 roundDisplay.textContent = `ROUND: ${roundCounter}`;
                 quotaDisplay.textContent = `QUOTA: ${scoreQuota}`;
                 if (speedDisplay) speedDisplay.textContent = `SPEED: ${speedStat}ms`;
-                if (menuSpeed) menuSpeed.textContent = `${speedStat} ms`;
+                if (menuHighScore) menuHighScore.textContent = persistentState.highestScore;
             }
 
             function handleDeath() {
@@ -991,6 +1000,9 @@
 
                 if (roundCounter > persistentState.highestRound) {
                     persistentState.highestRound = roundCounter;
+                }
+                if (score > persistentState.highestScore) {
+                    persistentState.highestScore = score;
                 }
 
                 saveState();
@@ -1075,8 +1087,6 @@
             function generateBoosterCards() {
                 // Filter out speed-affecting cards when at bounds so they don't spawn unnecessarily
                 let availableCards = cardDatabase.filter(c => {
-                    // If at minimum speed, don't offer further slowers
-                    if (speedStat <= 150 && c.id === 'TURBO_STARTER') return false;
                     // If at maximum speed, don't offer further speeders
                     if (speedStat >= 250 && (c.id === 'CAREFUL_CRAWLER')) return false;
                     return true;
@@ -1120,6 +1130,51 @@
 
                 gameState = 'GAME';
                 setupLevel();
+            }
+
+            // --- Achievements ---
+            function checkAchievements() {
+                const playable = (currentGridSize * currentGridSize) - obstacles.length;
+
+                if (speedStat <= 150) persistentState.achievements.fastestSpeed = true;
+                if (speedStat >= 250) persistentState.achievements.slowestSpeed = true;
+                if (snake.length >= Math.floor(playable / 2)) persistentState.achievements.halfFull = true;
+                if (snake.length >= playable) {
+                    if ((persistentState.upgrades.appleSpawnRateLevel || 0) > 0 || (persistentState.upgrades.startLengthLevel || 0) > 0) {
+                        persistentState.achievements.fullWithUpgrades = true;
+                    } else {
+                        persistentState.achievements.fullWithoutUpgrades = true;
+                    }
+                }
+                saveState();
+            }
+
+            function displayAchievements() {
+                achievementsListEl.innerHTML = '';
+                const ach = persistentState.achievements;
+                const items = [
+                    { id: 'fastestSpeed', title: 'Fastest Speed', desc: 'Reach the minimum speed (150ms)\n' },
+                    { id: 'slowestSpeed', title: 'Slowest Speed', desc: 'Reach the maximum speed (250ms)\n' },
+                    { id: 'halfFull', title: 'Half full or half empty?', desc: 'Fill half of the playable board.' },
+                    { id: 'fullWithUpgrades', title: 'Full House (With Upgrades)', desc: 'Fill the entire board while having permanent upgrades.' },
+                    { id: 'fullWithoutUpgrades', title: 'Hardcore Gamer', desc: 'Fill the entire board without permanent upgrades.' }
+                ];
+
+                items.forEach(it => {
+                    const el = document.createElement('div');
+                    el.style.padding = '8px 0';
+                    el.style.borderBottom = '1px solid rgba(255,255,255,0.06)';
+                    el.innerHTML = `
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <div>
+                                <div style="color:#00ff00;font-weight:bold;">${it.title}</div>
+                                <div style="font-size:12px;color:#cccccc;">${it.desc}</div>
+                            </div>
+                            <div style="font-weight:bold;">${ach[it.id] ? 'UNLOCKED' : 'LOCKED'}</div>
+                        </div>
+                    `;
+                    achievementsListEl.appendChild(el);
+                });
             }
 
             // --- Roguelite Systems (Upgrades & Save/Load) ---
@@ -1210,7 +1265,7 @@
                 if (savedState) {
                     persistentState = JSON.parse(savedState);
                     // Ensure compatibility with older saves
-                    if (!persistentState.upgrades.startLengthLevel) {
+                    if (!persistentState.upgrades.startLengthLevel && persistentState.upgrades.startLengthLevel !== 0) {
                         persistentState.upgrades.startLengthLevel = 0;
                     }
                     if (persistentState.activeUpgrades.startLength === undefined) {
@@ -1218,6 +1273,18 @@
                     }
                     if (persistentState.highestRound === undefined) {
                         persistentState.highestRound = 0;
+                    }
+                    if (persistentState.highestScore === undefined) {
+                        persistentState.highestScore = 0;
+                    }
+                    if (!persistentState.achievements) {
+                        persistentState.achievements = {
+                            fastestSpeed: false,
+                            slowestSpeed: false,
+                            halfFull: false,
+                            fullWithUpgrades: false,
+                            fullWithoutUpgrades: false
+                        };
                     }
                 }
             }
