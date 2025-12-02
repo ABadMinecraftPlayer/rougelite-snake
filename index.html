@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roguelite Snake</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #1a1a1a;
+            color: #f0f0f0;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 10vh;
+            touch-action: manipulation;
+            /* Disable double-tap zoom on mobile */
+        }
+
+        canvas {
+            background-color: #111;
+            border: 4px solid #444;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+        }
+
+        /* UI Panels */
+        .ui-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(20, 20, 20, 0.95);
+            border: 4px solid #444;
+            border-radius: 12px;
+            padding: 2rem;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-block;
+            background-color: #2a2a2a;
+            border: 2px solid #555;
+            color: #00ff00;
+            padding: 1rem 1.5rem;
+            margin-top: 1rem;
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px #00a000;
+        }
+
+        .btn:hover {
+            background-color: #333;
+            border-color: #777;
+            transform: translateY(-2px);
+            box-shadow: 0 6px #00c000;
+        }
+
+        .btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px #008000;
+        }
+
+        .btn-secondary {
+            background-color: #331111;
+            border-color: #772222;
+            color: #ff4444;
+            box-shadow: 0 4px #a00000;
+        }
+
+        .btn-secondary:hover {
+            background-color: #441111;
+            border-color: #992222;
+            box-shadow: 0 6px #c00000;
+        }
+
+        .btn-secondary:active {
+            box-shadow: 0 2px #800000;
+        }
+
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.75rem;
+            margin-left: 1rem;
+        }
+
+        /* Upgrade Item */
+        .upgrade-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #222;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 2px solid #333;
+            text-align: left;
+        }
+
+        .upgrade-info {
+            flex-grow: 1;
+        }
+
+        .upgrade-info p {
+            font-size: 0.8rem;
+            margin: 0.25rem 0;
+        }
+
+        .upgrade-info .cost {
+            color: #ffff00;
+            font-weight: bold;
+        }
+
+        /* Checkbox Toggle */
+        .toggle-label {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 28px;
+            margin-right: 10px;
+        }
+
+        .toggle-label input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #444;
+            transition: .4s;
+            border-radius: 28px;
+            border: 2px solid #555;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: #aaa;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: #00a000;
+            border-color: #00ff00;
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(22px);
+            background-color: #fff;
+        }
+
+        /* Game HUD (Top Center) */
+        #game-hud {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1.5rem;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            color: #ffff00;
+            font-size: 1.1rem;
+            z-index: 5;
+            min-width: 300px;
+            text-align: center;
+        }
+
+        /* Hearts Container (Bottom Center) */
+        #hearts-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            z-index: 5;
+        }
+
+        #touch-controls {
+            position: absolute;
+            bottom: 20px;
+            width: 150px;
+            height: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+            z-index: 20;
+        }
+
+        .touch-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            opacity: 0.7;
+        }
+
+        #touch-up {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        #touch-left {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        #touch-right {
+            grid-column: 3;
+            grid-row: 2;
+        }
+
+        #touch-down {
+            grid-column: 2;
+            grid-row: 3;
+        }
+
+        /* Card Choice UI */
+        .card {
+            background-color: #2a2a2a;
+            border: 2px solid #555;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px #444;
+        }
+
+        .card:hover {
+            background-color: #333;
+            border-color: #00ff00;
+            transform: translateY(-4px);
+            box-shadow: 0 8px #00a000;
+        }
+
+        .card h3 {
+            font-size: 1.25rem;
+            color: #00ff00;
+            margin-bottom: 0.5rem;
+        }
+
+        .card .buff {
+            color: #f0f0f0;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .card .debuff {
+            color: #ff4444;
+            font-size: 0.8rem;
+        }
+
+        @media (min-width: 768px) {
+            #touch-controls {
+                display: none;
+                /* Hide touch controls on larger screens */
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Game Canvas -->
+    <div id="game-container" class="relative">
+        <!-- HUD is hidden by default and shown only in GAME state -->
+        <div id="game-hud" class="hidden">
+            <div id="score-display">SCORE: 0</div>
+            <div id="speed-display">SPEED: 200ms</div>
+            <div id="quota-display">QUOTA: 5</div>
+            <div id="round-display">ROUND: 1</div>
+            <!-- Coins are controlled via JS based on state -->
+            <div id="coins-display">COINS: 0</div>
+        </div>
+
+        <!-- Hearts Container (hidden by default) -->
+        <div id="hearts-container" class="hidden">
+            <!-- Hearts will be injected here by JS -->
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <!-- Main Menu UI -->
+    <div id="main-menu" class="ui-panel">
+        <h1 class="text-3xl text-green-400 mb-4">Roguelite Snake</h1>
+        <p class="text-lg mb-2">Total Applecoins: <span id="menu-coins" class="text-yellow-300">0</span></p>
+        <p class="text-base mb-2">Speed: <span id="menu-speed" class="text-yellow-300">200 ms</span></p>
+        <p class="text-base mb-6">Highest Round: <span id="menu-high-round" class="text-yellow-300">0</span></p>
+        <button id="start-game-btn" class="btn w-full">Start Game</button>
+        <button id="upgrades-btn" class="btn w-full">Upgrades</button>
+    </div>
+
+    <!-- Game Over UI -->
+    <div id="game-over-menu" class="ui-panel hidden">
+        <h1 class="text-3xl text-red-500 mb-4">GAME OVER</h1>
+        <p class="text-lg mb-2">Final Score: <span id="final-score" class="text-white">0</span></p>
+        <p class="text-lg mb-6">Rounds Reached: <span id="final-round" class="text-white">0</span></p>
+        <button id="restart-btn" class="btn w-full">Main Menu</button>
+    </div>
+
+    <!-- Card Choice UI -->
+    <div id="card-choice-menu" class="ui-panel hidden">
+        <h1 class="text-2xl text-yellow-300 mb-4">CHOOSE A BOOSTER</h1>
+        <div id="card-options">
+            <!-- Cards will be injected here by JS -->
+        </div>
+    </div>
+
+    <!-- Upgrades UI -->
+    <div id="upgrades-menu" class="ui-panel hidden">
+        <h1 class="text-2xl text-yellow-300 mb-4">UPGRADES</h1>
+        <!-- Keeping this visible as it's essential for using the upgrade screen -->
+        <p class="text-lg mb-6">Available Coins: <span id="upgrade-coins" class="text-yellow-300">0</span></p>
+
+        <!-- Upgrade Item 1: Apple Spawn Rate -->
+        <div class="upgrade-item">
+            <div class="upgrade-info">
+                <p class="text-green-400">Apple Abundance</p>
+                <p>Increases apple spawn rate.</p>
+                <p>Current: <span id="apple-rate-value">2.00%</span></p>
+                <p class="cost">Cost: <span id="apple-rate-cost">10</span> Coins</p>
+            </div>
+            <div>
+                <button id="buy-apple-rate" class="btn btn-small">Buy</button>
+            </div>
+        </div>
+
+        <!-- Upgrade Item 2: Starting Length (Example) -->
+        <div class="upgrade-item">
+            <div class="upgrade-info">
+                <p class="text-blue-400">Long Start</p>
+                <p>Start with a longer snake.</p>
+                <p class="cost">Current: <span id="start-length-value">3</span></p>
+                <p class="cost">Cost: <span id="start-length-cost">25</span> Coins</p>
+            </div>
+            <div>
+                <button id="buy-start-length" class="btn btn-small">Buy</button>
+            </div>
+        </div>
+
+        <h2 class="text-xl text-gray-400 mt-8 mb-4">Toggle Upgrades</h2>
+        <div class="upgrade-item">
+            <label class="toggle-label">
+                <input type="checkbox" id="toggle-apple-rate">
+                <span class="slider"></span>
+            </label>
+            <span class="text-sm">Apple Abundance (Active)</span>
+        </div>
+        <div class="upgrade-item">
+            <label class="toggle-label">
+                <input type="checkbox" id="toggle-start-length">
+                <span class="slider"></span>
+            </label>
+            <span class="text-sm">Long Start (Active)</span>
+        </div>
+
+        <button id="back-to-menu-btn" class="btn btn-secondary w-full mt-8">Back to Menu</button>
+    </div>
+
+    <!-- Touch Controls for Mobile -->
+    <div id="touch-controls" class="hidden">
+        <button id="touch-up" class="touch-btn">▲</button>
+        <button id="touch-left" class="touch-btn">◄</button>
+        <button id="touch-right" class="touch-btn">►</button>
+        <button id="touch-down" class="touch-btn">▼</button>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // --- Game Constants ---
+            const GRID_SIZE = 20; // Static 20x20 grid
+            let TILE_SIZE = 20;   // Size of each tile in pixels
+
+            // --- Game Elements ---
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+
+            // UI Panels
+            const mainMenu = document.getElementById('main-menu');
+            const gameOverMenu = document.getElementById('game-over-menu');
+            const upgradesMenu = document.getElementById('upgrades-menu');
+            const gameHud = document.getElementById('game-hud');
+            const touchControls = document.getElementById('touch-controls');
+            const heartsContainer = document.getElementById('hearts-container');
+
+            // UI Buttons
+            const startGameBtn = document.getElementById('start-game-btn');
+            const upgradesBtn = document.getElementById('upgrades-btn');
+            const restartBtn = document.getElementById('restart-btn');
+            const backToMenuBtn = document.getElementById('back-to-menu-btn');
+            const buyAppleRateBtn = document.getElementById('buy-apple-rate');
+            const buyStartLengthBtn = document.getElementById('buy-start-length');
+
+            // UI Toggles
+            const toggleAppleRate = document.getElementById('toggle-apple-rate');
+            const toggleStartLength = document.getElementById('toggle-start-length');
+
+            // UI Readouts
+            const menuCoins = document.getElementById('menu-coins');
+            const upgradeCoins = document.getElementById('upgrade-coins');
+            const finalScore = document.getElementById('final-score');
+            const coinsEarned = document.getElementById('coins-earned');
+            const scoreDisplay = document.getElementById('score-display');
+            const speedDisplay = document.getElementById('speed-display');
+            const menuSpeed = document.getElementById('menu-speed');
+            const coinsDisplay = document.getElementById('coins-display');
+            const roundDisplay = document.getElementById('round-display');
+            const quotaDisplay = document.getElementById('quota-display');
+            const menuHighRound = document.getElementById('menu-high-round');
+            const finalRound = document.getElementById('final-round');
+
+            // Card UI
+            const cardChoiceMenu = document.getElementById('card-choice-menu');
+            const cardOptions = document.getElementById('card-options');
+
+            // Upgrade Readouts
+            const appleRateValue = document.getElementById('apple-rate-value');
+            const appleRateCost = document.getElementById('apple-rate-cost');
+            const startLengthValue = document.getElementById('start-length-value');
+            const startLengthCost = document.getElementById('start-length-cost');
+
+            // --- Game State ---
+            let gameState = 'MENU'; // MENU, GAME, UPGRADES, GAME_OVER, CARD_CHOICE
+            let snake, apples, obstacles, direction, newDirection, score, gameLoopInterval;
+            let lives, roundCounter, scoreQuota, currentGridSize;
+            let activeBuffs = {};
+            let generatedCards = [];
+            // Canonical permanent speed stat (in ms). User requested base 200ms.
+            let speedStat = 200; // Speed stat (min 150, max 250)
+            let gameSpeed = speedStat; // actual loop delay; will be derived from speedStat + temporary buffs
+            let runInitialScore = 10; // Score at the start of the entire run (default 10)
+            let isPausedAfterDeath = false; // Flag to track if paused after death
+
+            // --- Persistent Roguelite State ---
+            let persistentState = {
+                appleCoins: 0,
+                highestRound: 0,
+                upgrades: {
+                    appleSpawnRateLevel: 0,
+                    startLengthLevel: 0
+                },
+                activeUpgrades: {
+                    appleSpawnRate: true,
+                    startLength: true
+                }
+            };
+
+            const BASE_APPLE_SPAWN_RATE = 0.02;
+            const APPLE_RATE_INCREASE = 0.0025;
+            const BASE_START_LENGTH = 1;
+            const START_LENGTH_INCREASE = 1;
+            const INITIAL_SCORE = 1; // Requested starting score
+
+            // --- Card Database ---
+            const cardDatabase = [
+                {
+                    id: "APPLE_BOOM",
+                    title: "Apple Boom",
+                    buff: "Instantly spawns 3 extra apples.",
+                    debuff: null,
+                    applyEffect: () => {
+                        spawnSingleApple();
+                        spawnSingleApple();
+                        spawnSingleApple();
+                    }
+                },
+                {
+                    id: "TURBO_STARTER",
+                    title: "Turbo Starter",
+                    buff: "+5 Score and +5 Length.",
+                    debuff: "-10ms Speed.",
+                    applyEffect: () => {
+                        score += 5;
+                        // Instant length increase (add 5 segments to the tail end)
+                        const tail = snake[snake.length - 1];
+                        for (let i = 0; i < 5; i++) {
+                            snake.push({ x: tail.x, y: tail.y });
+                        }
+
+                        // Apply speed debuff - reduce speed stat by 10 (minimum 150)
+                        speedStat = Math.max(150, speedStat - 10);
+                        updateHud();
+                    }
+                },
+                {
+                    id: "CAREFUL_CRAWLER",
+                    title: "Careful Crawler",
+                    buff: "+10ms Speed Stat.",
+                    debuff: "-2 Score and Snake length reduced by 2.",
+                    applyEffect: () => {
+                        score = Math.max(0, score - 2);
+                        // Get the starting length to know how much we can safely remove
+                        const startLength = persistentState.activeUpgrades.startLength
+                            ? BASE_START_LENGTH + (persistentState.upgrades.startLengthLevel * START_LENGTH_INCREASE)
+                            : BASE_START_LENGTH;
+                        // Instant length decrease (remove 2 segments from the tail end)
+                        for (let i = 0; i < 2 && snake.length > startLength; i++) {
+                            snake.pop();
+                        }
+
+                        // Apply speed buff - increase speed stat by 10 (maximum 250)
+                        speedStat = Math.min(250, speedStat + 10);
+                        updateHud();
+                    }
+                },
+                {
+                    id: "HASTY",
+                    title: "Hasty",
+                    buff: "+10ms Speed Stat.",
+                    debuff: null,
+                    applyEffect: () => {
+                        // Increase speed stat by 10 (maximum 250)
+                        speedStat = Math.min(250, speedStat + 10);
+                        updateHud();
+                    }
+                },
+                {
+                    id: "GHOST",
+                    title: "Ghost Form",
+                    buff: "Pass through your own tail for 10 seconds.",
+                    debuff: null,
+                    applyEffect: () => {
+                        activeBuffs.ghost = 100;
+                    }
+                },
+                {
+                    id: "COIN_BONUS",
+                    title: "Investment",
+                    buff: "Instantly gain 10 Applecoins.",
+                    debuff: null,
+                    applyEffect: () => {
+                        persistentState.appleCoins += 10;
+                        updateHud();
+                        saveState();
+                    }
+                }
+            ];
+
+            // --- Game Logic ---
+
+            function initializeGame() {
+                loadState();
+                resizeCanvas();
+                window.addEventListener('resize', resizeCanvas);
+
+                // Keyboard Input
+                document.addEventListener('keydown', e => {
+                    if (gameState !== 'GAME') return;
+
+                    // If paused after death, any input resumes the game
+                    if (isPausedAfterDeath) {
+                        isPausedAfterDeath = false;
+                        canvas.style.backgroundColor = '#111';
+                        if (gameLoopInterval) clearInterval(gameLoopInterval);
+                        gameLoopInterval = setInterval(gameLoop, gameSpeed);
+                        return;
+                    }
+
+                    const key = e.key;
+                    if ((key === 'ArrowUp' || key === 'w') && direction.y === 0) {
+                        newDirection = { x: 0, y: -1 };
+                    } else if ((key === 'ArrowDown' || key === 's') && direction.y === 0) {
+                        newDirection = { x: 0, y: 1 };
+                    } else if ((key === 'ArrowLeft' || key === 'a') && direction.x === 0) {
+                        newDirection = { x: -1, y: 0 };
+                    } else if ((key === 'ArrowRight' || key === 'd') && direction.x === 0) {
+                        newDirection = { x: 1, y: 0 };
+                    }
+                });
+
+                // Touch Input
+                document.getElementById('touch-up').addEventListener('click', () => {
+                    if (gameState !== 'GAME') return;
+                    if (isPausedAfterDeath) {
+                        isPausedAfterDeath = false;
+                        canvas.style.backgroundColor = '#111';
+                        if (gameLoopInterval) clearInterval(gameLoopInterval);
+                        gameLoopInterval = setInterval(gameLoop, gameSpeed);
+                        return;
+                    }
+                    if (direction.y === 0) newDirection = { x: 0, y: -1 };
+                });
+                document.getElementById('touch-down').addEventListener('click', () => {
+                    if (gameState !== 'GAME') return;
+                    if (isPausedAfterDeath) {
+                        isPausedAfterDeath = false;
+                        canvas.style.backgroundColor = '#111';
+                        if (gameLoopInterval) clearInterval(gameLoopInterval);
+                        gameLoopInterval = setInterval(gameLoop, gameSpeed);
+                        return;
+                    }
+                    if (direction.y === 0) newDirection = { x: 0, y: 1 };
+                });
+                document.getElementById('touch-left').addEventListener('click', () => {
+                    if (gameState !== 'GAME') return;
+                    if (isPausedAfterDeath) {
+                        isPausedAfterDeath = false;
+                        canvas.style.backgroundColor = '#111';
+                        if (gameLoopInterval) clearInterval(gameLoopInterval);
+                        gameLoopInterval = setInterval(gameLoop, gameSpeed);
+                        return;
+                    }
+                    if (direction.x === 0) newDirection = { x: -1, y: 0 };
+                });
+                document.getElementById('touch-right').addEventListener('click', () => {
+                    if (gameState !== 'GAME') return;
+                    if (isPausedAfterDeath) {
+                        isPausedAfterDeath = false;
+                        canvas.style.backgroundColor = '#111';
+                        if (gameLoopInterval) clearInterval(gameLoopInterval);
+                        gameLoopInterval = setInterval(gameLoop, gameSpeed);
+                        return;
+                    }
+                    if (direction.x === 0) newDirection = { x: 1, y: 0 };
+                });
+
+                // UI Button Listeners
+                startGameBtn.addEventListener('click', startGame);
+                upgradesBtn.addEventListener('click', showUpgradesMenu);
+                restartBtn.addEventListener('click', showMainMenu);
+                backToMenuBtn.addEventListener('click', showMainMenu);
+
+                // Buy Listeners
+                buyAppleRateBtn.addEventListener('click', () => buyUpgrade('appleSpawnRateLevel'));
+                buyStartLengthBtn.addEventListener('click', () => buyUpgrade('startLengthLevel'));
+
+                // Toggle Listeners
+                toggleAppleRate.addEventListener('change', () => toggleUpgradeActive('appleSpawnRate'));
+                toggleStartLength.addEventListener('change', () => toggleUpgradeActive('startLength'));
+
+                showMainMenu();
+            }
+
+            function resizeCanvas() {
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+
+                // Use GRID_SIZE for current sizing
+                const size = Math.min(viewportWidth, viewportHeight) * 0.9;
+
+                TILE_SIZE = Math.floor(size / GRID_SIZE);
+                canvas.width = TILE_SIZE * GRID_SIZE;
+                canvas.height = TILE_SIZE * GRID_SIZE;
+            }
+
+            function updateUIState() {
+                // Hide all panels
+                mainMenu.classList.add('hidden');
+                gameOverMenu.classList.add('hidden');
+                upgradesMenu.classList.add('hidden');
+                cardChoiceMenu.classList.add('hidden');
+                gameHud.classList.add('hidden'); // Hide HUD globally first
+                heartsContainer.classList.add('hidden');
+                touchControls.classList.add('hidden');
+
+                // Show the current panel
+                if (gameState === 'MENU') {
+                    mainMenu.classList.remove('hidden');
+                    // Coins display remains hidden here as requested
+                } else if (gameState === 'GAME') {
+                    // Show in-game elements
+                    gameHud.classList.remove('hidden');
+                    heartsContainer.classList.remove('hidden');
+                    touchControls.classList.remove('hidden');
+
+                    // Hide the coin display during active gameplay
+                    coinsDisplay.style.display = 'none';
+                } else if (gameState === 'GAME_OVER') {
+                    gameOverMenu.classList.remove('hidden');
+                    coinsDisplay.style.display = 'block'; // Show coins in game over
+                } else if (gameState === 'UPGRADES') {
+                    upgradesMenu.classList.remove('hidden');
+                    updateUpgradesUI();
+                    coinsDisplay.style.display = 'block';
+                } else if (gameState === 'CARD_CHOICE') {
+                    cardChoiceMenu.classList.remove('hidden');
+                    displayCardChoices();
+                    coinsDisplay.style.display = 'block';
+                }
+            }
+
+            function showMainMenu() {
+                gameState = 'MENU';
+                // Update menu display with current coins and highest round
+                menuCoins.textContent = persistentState.appleCoins;
+                menuHighRound.textContent = persistentState.highestRound;
+                if (menuSpeed) menuSpeed.textContent = `${speedStat} ms`;
+                updateUIState();
+                drawMenuBackground();
+            }
+
+            function showUpgradesMenu() {
+                gameState = 'UPGRADES';
+                updateUIState();
+            }
+
+            function drawMenuBackground() {
+                ctx.fillStyle = '#111';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = '#222';
+                for (let i = 0; i < GRID_SIZE; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(i * TILE_SIZE, 0);
+                    ctx.lineTo(i * TILE_SIZE, canvas.height);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(0, i * TILE_SIZE);
+                    ctx.lineTo(canvas.width, i * TILE_SIZE);
+                    ctx.stroke();
+                }
+                ctx.fillStyle = 'rgba(0, 255, 0, 0.5)';
+                ctx.font = `${TILE_SIZE * 2}px 'Press Start 2P'`;
+                ctx.textAlign = 'center';
+                ctx.fillText('SNAKE', canvas.width / 2, canvas.height / 2);
+            }
+
+            function startGame() {
+                // 1. Initialize run state
+                runInitialScore = INITIAL_SCORE; // Reset run base score for new game
+                score = runInitialScore;
+                roundCounter = 1;
+                currentGridSize = GRID_SIZE; // Fixed size
+                scoreQuota = 5;
+                activeBuffs = {};
+                // Start with the canonical speed stat
+                gameSpeed = speedStat;
+
+                // 2. Change UI and setup first level
+                gameState = 'GAME';
+                setupLevel();
+            }
+
+            function setupLevel() {
+                // 1. Only initialize snake if it doesn't exist (first game start)
+                if (!snake || snake.length === 0) {
+                    const startLength = persistentState.activeUpgrades.startLength
+                        ? BASE_START_LENGTH + (persistentState.upgrades.startLengthLevel * START_LENGTH_INCREASE)
+                        : BASE_START_LENGTH;
+
+                    // 2. Initialize level state
+                    snake = [];
+                    const spawnPoint = { x: Math.floor(currentGridSize / 2), y: Math.floor(currentGridSize / 2) };
+                    for (let i = 0; i < startLength; i++) {
+                        snake.push({ x: spawnPoint.x - i, y: spawnPoint.y });
+                    }
+
+                    // Initialize direction only on first game start
+                    direction = { x: 1, y: 0 };
+                    newDirection = { x: 1, y: 0 };
+                }
+                // If snake exists, keep it where it is - don't reset position
+
+                // Don't reset direction - keep the current direction
+                obstacles = [];
+
+                updateHud();
+
+                // 3. Generate map and food (keep existing apples)
+                const spawnPoint = { x: Math.floor(currentGridSize / 2), y: Math.floor(currentGridSize / 2) };
+                generateProceduralMap(spawnPoint);
+                // Don't reset apples - only spawn if this is the first level
+                if (!apples || apples.length === 0) {
+                    spawnInitialApples();
+                }
+
+                // 4. Change UI and start loop
+                updateUIState();
+
+                // 5. Apply speed effects (persistent across levels). Base comes from speedStat.
+                let currentSpeed = speedStat; // canonical permanent stat (ms)
+
+                // Temporary hasty buff overrides to a fast fixed value if present
+                if (activeBuffs.hasty) {
+                    currentSpeed = 120;
+                }
+
+                // Check for slowed/fast modifiers - they multiply the base
+                if (activeBuffs.slowed) {
+                    currentSpeed = currentSpeed * 1.2; // 20% slower
+                }
+                if (activeBuffs.fast) {
+                    currentSpeed = currentSpeed * 0.8; // 20% faster
+                }
+
+                // Ensure integer ms and a reasonable lower bound
+                gameSpeed = Math.max(50, Math.round(currentSpeed));
+
+                if (gameLoopInterval) clearInterval(gameLoopInterval);
+                gameLoopInterval = setInterval(gameLoop, gameSpeed);
+            }
+
+            function gameLoop() {
+                update();
+                draw();
+            }
+
+            function update() {
+                // Update active buffs (Ghost duration)
+                if (activeBuffs.ghost > 0) {
+                    activeBuffs.ghost--;
+                    if (activeBuffs.ghost === 0) {
+                        // Ghost effect wears off
+                    }
+                }
+
+                direction = newDirection;
+                const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
+
+                // --- Check Collisions ---
+
+                // Self-collision (treat snake body as obstacle)
+                for (let i = 1; i < snake.length; i++) {
+                    if (head.x === snake[i].x && head.y === snake[i].y) {
+                        return handleDeath();
+                    }
+                }
+
+                // Obstacle collision (includes border walls)
+                if (obstacles.some(o => o.x === head.x && o.y === head.y)) {
+                    return handleDeath();
+                }
+
+                snake.unshift(head); // Add new head
+
+                // --- Check Apple Eat ---
+                let ateApple = false;
+                const appleIndex = apples.findIndex(a => a.x === head.x && a.y === head.y);
+
+                if (appleIndex > -1) {
+                    ateApple = true;
+                    score++;
+                    apples.splice(appleIndex, 1); // Remove eaten apple
+                    spawnSingleApple(); // Spawn a new one
+                    updateHud();
+
+                    // Check for max size bonus
+                    const maxTiles = (currentGridSize * currentGridSize) - obstacles.length;
+                    if (snake.length >= maxTiles) {
+                        persistentState.appleCoins += 50; // Bonus!
+                        saveState();
+                        handleLevelWin();
+                    }
+                    // Check for score quota
+                    else if (score >= scoreQuota) {
+                        handleLevelWin();
+                    }
+                }
+
+                if (!ateApple) {
+                    snake.pop(); // Remove tail
+                }
+            }
+
+            function draw() {
+                // Clear canvas
+                ctx.fillStyle = '#111';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Draw obstacles
+                ctx.fillStyle = '#444';
+                obstacles.forEach(o => {
+                    ctx.fillRect(o.x * TILE_SIZE, o.y * TILE_SIZE, TILE_SIZE - 1, TILE_SIZE - 1);
+                });
+
+                // Draw apples
+                ctx.fillStyle = '#ff0000'; // Red
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = "rgba(255, 0, 0, 0.7)";
+                apples.forEach(a => {
+                    ctx.fillRect(a.x * TILE_SIZE, a.y * TILE_SIZE, TILE_SIZE - 1, TILE_SIZE - 1);
+                });
+                ctx.shadowBlur = 0; // Reset shadow
+
+                // Draw snake
+                ctx.fillStyle = '#00ff00'; // Green
+                if (activeBuffs.ghost > 0) {
+                    ctx.globalAlpha = 0.6; // Ghost effect
+                }
+                snake.forEach((segment, index) => {
+                    // Head is slightly brighter
+                    ctx.fillStyle = index === 0 ? '#55ff55' : '#00ff00';
+                    ctx.fillRect(segment.x * TILE_SIZE, segment.y * TILE_SIZE, TILE_SIZE - 1, TILE_SIZE - 1);
+                });
+                ctx.globalAlpha = 1.0; // Reset alpha
+            }
+
+            function updateHud() {
+                scoreDisplay.textContent = `SCORE: ${score}`;
+                coinsDisplay.textContent = `COINS: ${persistentState.appleCoins}`;
+                roundDisplay.textContent = `ROUND: ${roundCounter}`;
+                quotaDisplay.textContent = `QUOTA: ${scoreQuota}`;
+                if (speedDisplay) speedDisplay.textContent = `SPEED: ${speedStat}ms`;
+                if (menuSpeed) menuSpeed.textContent = `${speedStat} ms`;
+            }
+
+            function handleDeath() {
+                // Only one life - game over immediately
+                clearInterval(gameLoopInterval);
+                triggerGameOver();
+            }
+
+            function handleLevelWin() {
+                clearInterval(gameLoopInterval);
+                gameState = 'CARD_CHOICE';
+                generatedCards = generateBoosterCards();
+                updateUIState();
+            }
+
+            function triggerGameOver() {
+                clearInterval(gameLoopInterval);
+                gameState = 'GAME_OVER';
+
+                let earned = Math.floor(score / 2);
+                // Hasty bonus logic
+                if (activeBuffs.hasty) {
+                    earned += Math.floor(score / 2);
+                }
+
+                persistentState.appleCoins += earned;
+
+                if (roundCounter > persistentState.highestRound) {
+                    persistentState.highestRound = roundCounter;
+                }
+
+                saveState();
+
+                finalScore.textContent = score;
+                finalRound.textContent = roundCounter;
+
+                // Reset everything for next game
+                snake = [];
+                apples = [];
+                obstacles = [];
+                activeBuffs = {};
+                isPausedAfterDeath = false;
+
+                updateUIState();
+            }
+
+            // --- Map & Food Generation ---
+
+            function generateProceduralMap(spawnPoint) {
+                obstacles = [];
+                currentGridSize = GRID_SIZE; // Ensure it's fixed to 20
+
+                // Add border walls (Mandatory obstacles)
+                for (let i = 0; i < currentGridSize; i++) {
+                    obstacles.push({ x: i, y: 0 });          // Top
+                    obstacles.push({ x: i, y: currentGridSize - 1 }); // Bottom
+                    obstacles.push({ x: 0, y: i });          // Left
+                    obstacles.push({ x: currentGridSize - 1, y: i }); // Right
+                }
+
+                // NO RANDOM INTERNAL ROCKS
+            }
+
+            function spawnInitialApples() {
+                apples = [];
+                const spawnRate = persistentState.activeUpgrades.appleSpawnRate
+                    ? BASE_APPLE_SPAWN_RATE + (persistentState.upgrades.appleSpawnRateLevel * APPLE_RATE_INCREASE)
+                    : BASE_APPLE_SPAWN_RATE;
+
+                const numApples = Math.floor((currentGridSize * currentGridSize) * spawnRate);
+
+                for (let i = 0; i < numApples; i++) {
+                    spawnSingleApple();
+                }
+            }
+
+            function spawnSingleApple() {
+                let pos = getRandomEmptyPosition();
+                if (pos) {
+                    apples.push(pos);
+                }
+            }
+
+            function getRandomEmptyPosition() {
+                let pos;
+                let attempts = 0;
+                const maxAttempts = currentGridSize * currentGridSize;
+
+                while (attempts < maxAttempts) {
+                    pos = {
+                        x: Math.floor(Math.random() * (currentGridSize - 2)) + 1, // Avoid borders
+                        y: Math.floor(Math.random() * (currentGridSize - 2)) + 1
+                    };
+
+                    if (isPositionEmpty(pos)) {
+                        return pos;
+                    }
+                    attempts++;
+                }
+                return null;
+            }
+
+            function isPositionEmpty(pos) {
+                if (snake.some(s => s.x === pos.x && s.y === pos.y)) return false;
+                if (apples.some(a => a.x === pos.x && a.y === pos.y)) return false;
+                if (obstacles.some(o => o.x === pos.x && o.y === pos.y)) return false;
+                return true;
+            }
+
+            // --- Card Choice Logic ---
+
+            function generateBoosterCards() {
+                // Filter out speed-affecting cards when at bounds so they don't spawn unnecessarily
+                let availableCards = cardDatabase.filter(c => {
+                    // If at minimum speed, don't offer further slowers
+                    if (speedStat <= 150 && c.id === 'TURBO_STARTER') return false;
+                    // If at maximum speed, don't offer further speeders
+                    if (speedStat >= 250 && (c.id === 'CAREFUL_CRAWLER' || c.id === 'HASTY')) return false;
+                    return true;
+                });
+                availableCards = [...availableCards];
+                let chosenCards = [];
+
+                for (let i = 0; i < 3; i++) {
+                    if (availableCards.length === 0) break;
+
+                    let randIndex = Math.floor(Math.random() * availableCards.length);
+                    chosenCards.push(availableCards[randIndex]);
+                    availableCards.splice(randIndex, 1);
+                }
+                return chosenCards;
+            }
+
+            function displayCardChoices() {
+                cardOptions.innerHTML = '';
+                generatedCards.forEach((card, index) => {
+                    const cardEl = document.createElement('div');
+                    cardEl.className = 'card';
+                    cardEl.innerHTML = `
+                        <h3>${card.title}</h3>
+                        <p class="buff">${card.buff}</p>
+                        ${card.debuff ? `<p class="debuff">${card.debuff}</p>` : ''}
+                    `;
+                    cardEl.addEventListener('click', () => selectCard(index));
+                    cardOptions.appendChild(cardEl);
+                });
+            }
+
+            function selectCard(index) {
+                const card = generatedCards[index];
+                card.applyEffect();
+
+                // Increase quota for next booster (no round counter)
+                scoreQuota = Math.floor(scoreQuota * 1.5) + 5;
+
+                // Speed persists - do not reset after this level
+
+                gameState = 'GAME';
+                setupLevel();
+            }
+
+            // --- Roguelite Systems (Upgrades & Save/Load) ---
+
+            function getUpgradeCost(level) {
+                return Math.floor(10 * Math.pow(1.5, level));
+            }
+
+            function updateUpgradesUI() {
+                upgradeCoins.textContent = persistentState.appleCoins;
+
+                // Apple Rate Upgrade
+                const appleLevel = persistentState.upgrades.appleSpawnRateLevel;
+                const currentAppleRate = BASE_APPLE_SPAWN_RATE + (appleLevel * APPLE_RATE_INCREASE);
+                appleRateValue.textContent = `${(currentAppleRate * 100).toFixed(2)}%`;
+                appleRateCost.textContent = getUpgradeCost(appleLevel);
+                toggleAppleRate.checked = persistentState.activeUpgrades.appleSpawnRate;
+
+                // Start Length Upgrade
+                const lengthLevel = persistentState.upgrades.startLengthLevel;
+                const currentStartLength = BASE_START_LENGTH + (lengthLevel * START_LENGTH_INCREASE);
+                startLengthValue.textContent = currentStartLength;
+                startLengthCost.textContent = getUpgradeCost(lengthLevel);
+                toggleStartLength.checked = persistentState.activeUpgrades.startLength;
+            }
+
+            function buyUpgrade(upgradeName) {
+                const level = persistentState.upgrades[upgradeName];
+                const cost = getUpgradeCost(level);
+
+                if (persistentState.appleCoins >= cost) {
+                    persistentState.appleCoins -= cost;
+                    persistentState.upgrades[upgradeName]++;
+                    saveState();
+                    updateUpgradesUI();
+                } else {
+                    console.log("Not enough coins!");
+                }
+            }
+
+            function toggleUpgradeActive(upgradeName) {
+                persistentState.activeUpgrades[upgradeName] = !persistentState.activeUpgrades[upgradeName];
+                saveState();
+                updateUpgradesUI();
+            }
+
+            function saveState() {
+                localStorage.setItem('rogueSnakeState', JSON.stringify(persistentState));
+            }
+
+            function loadState() {
+                const savedState = localStorage.getItem('rogueSnakeState');
+                if (savedState) {
+                    persistentState = JSON.parse(savedState);
+                    // Ensure compatibility with older saves
+                    if (!persistentState.upgrades.startLengthLevel) {
+                        persistentState.upgrades.startLengthLevel = 0;
+                    }
+                    if (persistentState.activeUpgrades.startLength === undefined) {
+                        persistentState.activeUpgrades.startLength = true;
+                    }
+                    if (persistentState.highestRound === undefined) {
+                        persistentState.highestRound = 0;
+                    }
+                }
+            }
+
+            // --- Start ---
+            initializeGame();
+        });
+    </script>
+</body>
+
+</html>
