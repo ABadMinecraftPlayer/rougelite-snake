@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Roguelite Snake</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -199,20 +199,6 @@
             text-align: center;
         }
 
-        /* Hearts Container (Bottom Center) */
-        #hearts-container {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            align-items: center;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            z-index: 5;
-        }
-
         #touch-controls {
             position: absolute;
             bottom: 20px;
@@ -322,11 +308,6 @@
             <div id="quota-display">QUOTA: 5</div>
             <div id="round-display">ROUND: 1</div>
             <!-- coins removed from HUD per request -->
-        </div>
-
-        <!-- Hearts Container (hidden by default) -->
-        <div id="hearts-container" class="hidden">
-            <!-- Hearts will be injected here by JS -->
         </div>
 
         <canvas id="gameCanvas"></canvas>
@@ -450,7 +431,6 @@
             const achievementsMenu = document.getElementById('achievements-menu');
             const gameHud = document.getElementById('game-hud');
             const touchControls = document.getElementById('touch-controls');
-            const heartsContainer = document.getElementById('hearts-container');
 
             // UI Buttons
             const startGameBtn = document.getElementById('start-game-btn');
@@ -714,7 +694,6 @@
                 upgradesMenu.classList.add('hidden');
                 cardChoiceMenu.classList.add('hidden');
                 gameHud.classList.add('hidden'); // Hide HUD globally first
-                heartsContainer.classList.add('hidden');
                 touchControls.classList.add('hidden');
                 achievementsMenu.classList.add('hidden');
 
@@ -724,7 +703,6 @@
                 } else if (gameState === 'GAME') {
                     // Show in-game elements
                     gameHud.classList.remove('hidden');
-                    heartsContainer.classList.remove('hidden');
                     touchControls.classList.remove('hidden');
                 } else if (gameState === 'GAME_OVER') {
                     gameOverMenu.classList.remove('hidden');
@@ -763,6 +741,7 @@
             function drawMenuBackground() {
                 ctx.fillStyle = '#111';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
+
                 ctx.strokeStyle = '#222';
                 for (let i = 0; i < GRID_SIZE; i++) {
                     ctx.beginPath();
@@ -774,10 +753,35 @@
                     ctx.lineTo(canvas.width, i * TILE_SIZE);
                     ctx.stroke();
                 }
-                ctx.fillStyle = 'rgba(0, 255, 0, 0.5)';
+
+                ctx.fillStyle = 'rgba(0, 255, 0, 0.9)'; // almost fully opaque
                 ctx.font = `${TILE_SIZE * 2}px 'Press Start 2P'`;
                 ctx.textAlign = 'center';
-                ctx.fillText('SNAKE', canvas.width / 2, canvas.height / 2);
+
+                const text = "ROUGE SNAKE"; // or any long text
+                const maxWidth = canvas.width * 0.95; // max width before wrapping
+                const words = text.split(' ');
+                let line = '';
+                let lines = [];
+
+                for (let i = 0; i < words.length; i++) {
+                    const testLine = line + words[i] + ' ';
+                    const metrics = ctx.measureText(testLine);
+                    const testWidth = metrics.width;
+                    if (testWidth > maxWidth && i > 0) {
+                        lines.push(line);
+                        line = words[i] + ' ';
+                    } else {
+                        line = testLine;
+                    }
+                }
+                lines.push(line);
+
+                // Draw each line
+                const startY = canvas.height / 2 - (lines.length - 1) * TILE_SIZE; // center vertically
+                lines.forEach((ln, idx) => {
+                    ctx.fillText(ln.trim(), canvas.width / 2, startY + idx * TILE_SIZE * 2);
+                });
             }
 
             function startGame() {
@@ -990,12 +994,15 @@
 
             function triggerGameOver() {
                 clearInterval(gameLoopInterval);
+
+                // --- Reset speed to base ---
+                speedStat = 200; // base canonical speed (ms)
+                gameSpeed = speedStat;
+
                 gameState = 'GAME_OVER';
 
                 // Calculate earned coins for this run
                 let earned = Math.floor(score / 2);
-
-                // Add to persistent total
                 persistentState.appleCoins += earned;
 
                 if (roundCounter > persistentState.highestRound) {
@@ -1004,17 +1011,16 @@
                 if (score > persistentState.highestScore) {
                     persistentState.highestScore = score;
                 }
-
                 saveState();
 
                 finalScore.textContent = score;
                 finalRound.textContent = roundCounter;
 
-                // Update the newly added Game Over coin displays
+                // Update Game Over coin displays
                 coinsEarnedRunEl.textContent = earned;
                 finalTotalCoinsEl.textContent = persistentState.appleCoins;
 
-                // Reset everything for next game
+                // Reset game objects
                 snake = [];
                 apples = [];
                 obstacles = [];
